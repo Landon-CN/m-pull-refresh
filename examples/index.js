@@ -1,26 +1,33 @@
 function cb(status) {
-  const ele = document.querySelector('.list-indicator').childNodes[0];
-  console.dir(ele);
+  const ele = document.querySelector('.godz-pr-text');
+  console.log(status);
   
   switch (status) {
     case 'deactivate':
-      ele.textContent = '下拉刷新';
+      ele.innerHTML = '下拉刷新';
       break;
     case 'activate':
-      ele.textContent = '释放加载';
+      ele.innerHTML = '释放加载';
       break;
     case 'release':
-      ele.textContent = 'loading';
+      ele.innerHTML = 'loading';
       break;
     case 'finish':
-      ele.textContent = '加载完成';
+      ele.innerHTML = '加载完成';
       // a.destory();
       break;
+    case 'down':
     default:
       break;
   }
 }
 
-let a = refresh(document.querySelector('.list'), {
-  callback: cb,
+let refreshInstance = refresh(document.querySelector('.list'), {
+  direction: 'both',
+  statusChange: cb,
+  callback: () => {
+    setTimeout(() => {
+      refreshInstance.endSuccess();
+    }, 0);
+  },
 });

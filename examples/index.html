@@ -39,11 +39,41 @@
       /* position: absolute; */
       /* transform: translateY(-100%); */
     }
+
+    .godz-pr-down {
+      display: flex;
+      align-items: flex-end;
+      overflow: hidden;
+      height: 0;
+      background: green;
+    }
+
+    .godz-pr-up {
+      visibility: hidden;
+      overflow: hidden;
+      text-align: center;
+      margin: 10px 0;
+    }
+
+    .godz-hardware {
+      /* 硬件加速 */
+      -webkit-transform: translateZ(0);
+      -webkit-transform-style: preserve-3d;
+      -webkit-backface-visibility: hidden;
+      -webkit-perspective: 1000;
+    }
   </style>
-  <div class="list">
+  <div class="list godz-hardware">
     <!-- 必须有一个子body -->
-    <!-- <div>111</div> -->
+    <div class="godz-pr-down">
+      <div class="godz-pr-indicator">
+        <div class="godz-pr-box">
+          <div class="godz-pr-text">你好啊</div>
+        </div>
+      </div>
+    </div>
     <div class="list-body">
+      <!-- <div class="list-indicator"></div> -->
       <div class="li">我是一列1</div>
       <div class="li">我是一列2</div>
       <div class="li">我是一列3</div>
@@ -66,11 +96,14 @@
       <div class="li">我是一列2</div>
       <div class="li">我是一列3</div>
       <div class="li">我是一列4</div>
-
     </div>
-
+    <div class="godz-pr-up">
+      <div class="godz-pr-box">
+        <div class="godz-pr-text">加载中...</div>
+      </div>
+    </div>
   </div>
-  <script src="../src/refresh.js"> </script>
+  <script src="../src/refreshHeight.js"> </script>
   <script src="./index.js"></script>
 </body>
 

@@ -1,63 +1,11 @@
-// 判断是否支持 passive 属性
-let supportsPassive = false;
-try {
-  const opts = Object.defineProperty({}, 'passive', {
-    get() {
-      supportsPassive = true;
-    },
-  });
-  window.addEventListener('test', null, opts);
-} catch (e) {}
-const willPreventDefault = supportsPassive ? { passive: false } : false;
-
-/**
- * 判断一个对象是不是dom对象
- * @param {} obj
- */
-function isElement(obj) {
-  return obj && typeof obj === 'object' && obj.nodeType === 1 && typeof obj.nodeName === 'string';
-}
-
-function isEdge(ele, direction) {
-  if (ele.scrollTop <= 0 && direction === 'up') {
-    return true;
-  } else {
-    return ele.clientHeight === ele.scrollHeight - ele.scrollTop;
-  }
-}
-
-function setTransform(ele, y) {
-  ele.style.transform = `translate3d(0,${y}px,0)`;
-  ele.style.webkitTransform = `translate3d(0,${y}px,0)`;
-}
-/**
- * 设置/删除tansition动画
- * @param {*} ele
- * @param {*} del
- */
-function setTransition(ele, del) {
-  if (del) {
-    ele.style.transition = '';
-    ele.style.webkitTransition = '';
-  } else {
-    ele.style.transition = 'transform .3s,-webkit-transform .3s';
-    ele.style.webkitTransition = 'transform .3s,-webkit-transform .3s';
-  }
-}
-
-/**
- * 设置缓动，最大距离不会超过maxDistance
- */
-function dampingDiff(diff, max) {
-  const rate = Math.abs(diff) / window.screen.height;
-  diff = diff * (1 - rate);
-
-  if (diff > max) {
-    return max;
-  } else {
-    return diff;
-  }
-}
+import {
+  isElement,
+  setHeight,
+  setTransition,
+  dampingDiff,
+  willPreventDefault,
+  notPreventDefault,
+} from './utils';
 
 function refresh(ele, cof = {}) {
   if (!isElement(ele)) {
@@ -65,67 +13,114 @@ function refresh(ele, cof = {}) {
     throw new Error('m-pull-refresh need a dom element like div,not ' + typeof obj);
   }
   const config = Object.assign(
-    { maxDistance: 200, refreshDistance: 40, callback: () => {}, direction: 'up' },
+    {
+      maxDistance: 200,
+      refreshDistance: 40,
+      statusChange: () => {},
+      callback: () => {},
+      direction: 'up',
+    },
     cof,
   );
   let currentSt = '';
-  const child = ele.firstElementChild;
-  const indicatorEle = child.firstElementChild;
+  const childDown = ele.querySelector(`.godz-pr-down`);
+  const childUp = ele.querySelector(`.godz-pr-up`);
+  const indicatorEle = ele.querySelector('.godz-pr-text');
+  const isUp = config.direction === 'both' || config.direction === 'up';
+  const isDown = config.direction === 'both' || config.direction === 'down';
+
   let startY = null;
   function touchstart(event) {
-    currentSt = '';
+    startY = event.touches[0].screenY;
   }
+
+  let downHeight = 0;
+  let moving = false;
   function touchmove(event) {
-    if (!isEdge(ele, config.direction)) {
-      return;
-    }
-
     const screenY = event.touches[0].screenY;
-    if (startY === null) {
-      startY = screenY;
-      return;
-    }
-    let diff = Math.round(screenY - startY);
-    if ((diff < 0 && config.direction === 'up') || (diff > 0 && config.direction === 'down')) {
-      // 拖动方向不符合
+    // 直接阻止默认事件，防止警告
+    if (moving) event.preventDefault();
+
+    if (!moving && startY > screenY && isDown) {
       return;
     }
 
+    if (currentSt === 'release') {
+      // 正在加载的时候，阻止默认事件，并返回
+      return event.preventDefault();
+    }
+
+    if (ele.scrollTop > 0) {
+      return;
+    }
+    moving = true;
     event.preventDefault();
-    setTransition(child, true);
-    diff = dampingDiff(diff, config.maxDistance);
-    setTransform(child, diff);
-    if (diff < config.refreshDistance) {
+
+    let diff = Math.round(screenY - startY);
+
+    startY = screenY;
+    // 设置过度效果
+    setTransition(childDown, true);
+    downHeight += dampingDiff(diff, config.maxDistance, downHeight);
+    setHeight(childDown, downHeight);
+    if (downHeight < config.refreshDistance) {
       if (currentSt !== 'deactivate') {
         currentSt = 'deactivate';
-        config.callback('deactivate');
+        config.statusChange('deactivate');
       }
     } else {
       if (currentSt !== 'activate') {
         currentSt = 'activate';
-        config.callback('activate');
+        config.statusChange('activate');
       }
     }
   }
 
   function touchend() {
     if (currentSt === 'activate') {
-      setTransition(child, false);
+      downLoading = true;
+      setTransition(childDown, false);
       startY = null;
-      config.callback('release');
+      currentSt = 'release';
+      config.statusChange('release');
       setTimeout(() => {
         // 获取 indicator高度
-        setTransform(child, indicatorEle.clientHeight);
+        setHeight(childDown, indicatorEle.clientHeight);
       }, 0);
-      setTimeout(() => {
-        config.callback('finish');
-        setTransform(child, 0);
-      }, 1000);
+      config.callback();
     } else if (currentSt === 'deactivate') {
       startY = null;
-      setTransition(child, false);
-      setTransform(child, 0);
+      setTransition(childDown, false);
+      setHeight(childDown, 0);
     }
+    downHeight = 0;
+    moving = false;
+  }
+
+  let upLoading = false;
+  let startTop = null;
+  /**
+   * 监听滚动事件，判断到底触发刷新
+   */
+  function scroll() {
+    if (startTop === null) {
+      startTop = ele.scrollTop;
+      return;
+    }
+
+    // 必须是向下滚动才行，方向不能错
+    if (startTop >= ele.scrollTop) {
+      return;
+    }
+
+    const bottomDistance = ele.scrollHeight - ele.scrollTop - ele.clientHeight;
+    if (upLoading || bottomDistance > 100) {
+      // 加载中，或者没到到触发距离
+      return;
+    }
+    upLoading = true;
+    childUp.style.visibility = 'visible';
+    config.callback();
   }
 
   const eventList = {
@@ -133,18 +128,42 @@ function refresh(ele, cof = {}) {
     touchmove,
     touchend,
   };
+  if (isDown) {
+    for (const key of Object.keys(eventList)) {
+      ele.addEventListener(key, eventList[key], willPreventDefault);
+    }
+  }
 
-  for (const key of Object.keys(eventList)) {
-    ele.addEventListener(key, eventList[key], willPreventDefault);
+  if (isUp) {
+    ele.addEventListener('scroll', scroll, notPreventDefault);
   }
 
   return {
     destory() {
-      for (const key of Object.keys(eventList)) {
-        ele.removeEventListener(key, eventList[key]);
+      if (isDown) {
+        for (const key of Object.keys(eventList)) {
+          ele.removeEventListener(key, eventList[key]);
+        }
+      }
+      if (isUp) {
+        ele.removeEventListener('scroll', scroll);
+      }
+    },
+    endSuccess() {
+      // 加载结束回调，隐藏loading状态
+      if (isUp) {
+        childUp.style.visibility = 'hidden';
+        upLoading = false;
+        startTop = null;
+      }
+
+      if (isDown) {
+        currentSt = 'finish';
+        config.statusChange('finish');
+        setHeight(childDown, 0);
       }
     },
   };
 }
 
-window.refresh = refresh;
+export default refresh;
