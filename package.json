@@ -7,6 +7,14 @@
     "build": "npm run babel && cp ./src/refresh.css ./lib/refresh.css",
     "babel": "babel src --out-dir lib"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/scliuyang/m-pull-refresh.git"
+  },
+  "bugs": {
+    "url": "https://github.com/scliuyang/m-pull-refresh/issues"
+  },
+  "homepage": "https://github.com/scliuyang/m-pull-refresh",
   "keywords": [
     "react",
     "pull-refresh"
