@@ -8,7 +8,7 @@ export function isElement(obj) {
 
 export function setHeight(ele, y) {
   y = y > 0 ? y : 0;
-  ele.style.minHeight = `${y}px`;
+  ele.style.height = `${y}px`;
 }
 
 /**
@@ -21,8 +21,8 @@ export function setTransition(ele, del) {
     ele.style.transition = '';
     ele.style.webkitTransition = '';
   } else {
-    ele.style.transition = 'min-height .3s';
-    ele.style.webkitTransition = 'min-height .3s';
+    ele.style.transition = 'height .3s';
+    ele.style.webkitTransition = 'height .3s';
   }
 }
 
@@ -50,3 +50,11 @@ try {
 } catch (e) {}
 export const willPreventDefault = supportsPassive ? { passive: false } : false;
 export const notPreventDefault = supportsPassive ? { passive: true } : false;
+
+/**
+ * 判断是否需要满屏加载
+ * @param {*} ele
+ */
+export function isFull(ele) {
+  return ele.clientHeight === ele.scrollHeight;
+}

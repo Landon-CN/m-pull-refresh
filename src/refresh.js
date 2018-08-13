@@ -5,6 +5,7 @@ import {
   dampingDiff,
   willPreventDefault,
   notPreventDefault,
+  isFull,
 } from './utils';
 
 function refresh(ele, cof = {}) {
@@ -12,9 +13,19 @@ function refresh(ele, cof = {}) {
     // 不是dom元素
     throw new Error('m-pull-refresh need a dom element like div,not ' + typeof obj);
   }
+
+  cof.loadFull = Object.assign(
+    {
+      enable: false,
+      // 等待图片，dom之类的加载完毕的延迟时间
+      delay: 500,
+    },
+    cof.loadFull,
+  );
+
   const config = Object.assign(
     {
-      maxDistance: 200,
+      maxDistance: 100,
       refreshDistance: 40,
       statusChange: () => {},
       callback: () => {},
@@ -22,26 +33,34 @@ function refresh(ele, cof = {}) {
     },
     cof,
   );
+
   let currentSt = '';
   const childDown = ele.querySelector(`.godz-pr-down`);
   const childUp = ele.querySelector(`.godz-pr-up`);
   const indicatorEle = ele.querySelector('.godz-pr-text');
   const isUp = config.direction === 'both' || config.direction === 'up';
   const isDown = config.direction === 'both' || config.direction === 'down';
+  /**
+   * 是否锁定下拉刷新，上拉加载
+   * true 锁定
+   */
+  let isLock = false;
 
   let startY = null;
   function touchstart(event) {
-    startY = event.touches[0].screenY;
+    startY = event.touches[0].clientY;
   }
 
   let downHeight = 0;
   let moving = false;
   function touchmove(event) {
-    const screenY = event.touches[0].screenY;
+    if (isLock || currentSt === 'release') return;
+
+    const clientY = event.touches[0].clientY;
     // 直接阻止默认事件，防止警告
     if (moving) event.preventDefault();
 
-    if (!moving && startY > screenY && isDown) {
+    if (!moving && startY > clientY && isDown) {
       return;
     }
 
@@ -56,9 +75,9 @@ function refresh(ele, cof = {}) {
     moving = true;
     event.preventDefault();
 
-    let diff = Math.round(screenY - startY);
+    let diff = Math.round(clientY - startY);
 
-    startY = screenY;
+    startY = clientY;
     // 设置过度效果
     setTransition(childDown, true);
     downHeight += dampingDiff(diff, config.maxDistance, downHeight);
@@ -74,19 +93,21 @@ function refresh(ele, cof = {}) {
         config.statusChange('activate');
       }
     }
+
+    if (window.innerHeight - clientY <= 50) {
+      // uiwebview 如果手指移出屏幕外会不触发touchend
+      // 在离底部距离50px的地方手动触发一次
+      touchend();
+    }
   }
 
   function touchend() {
     if (currentSt === 'activate') {
-      downLoading = true;
       setTransition(childDown, false);
       startY = null;
       currentSt = 'release';
       config.statusChange('release');
-      setTimeout(() => {
-        // 获取 indicator高度
-        setHeight(childDown, indicatorEle.clientHeight);
-      }, 0);
+
       config.callback();
     } else if (currentSt === 'deactivate') {
       startY = null;
@@ -99,10 +120,13 @@ function refresh(ele, cof = {}) {
 
   let upLoading = false;
   let startTop = null;
+  let lastClientHeight = null;
   /**
    * 监听滚动事件，判断到底触发刷新
    */
   function scroll() {
+    if (upLoading || isLock) return;
+
     if (startTop === null) {
       startTop = ele.scrollTop;
       return;
@@ -110,16 +134,17 @@ function refresh(ele, cof = {}) {
 
     // 必须是向下滚动才行，方向不能错
     if (startTop >= ele.scrollTop) {
+      startTop = null;
       return;
     }
 
     const bottomDistance = ele.scrollHeight - ele.scrollTop - ele.clientHeight;
-    if (upLoading || bottomDistance > 100) {
-      // 加载中，或者没到到触发距离
+    if (bottomDistance > 100) {
+      // 没到到触发距离
       return;
     }
     upLoading = true;
-    childUp.style.visibility = 'visible';
+
     config.callback();
   }
 
@@ -128,27 +153,58 @@ function refresh(ele, cof = {}) {
     touchmove,
     touchend,
   };
-  if (isDown) {
-    for (const key of Object.keys(eventList)) {
-      ele.addEventListener(key, eventList[key], willPreventDefault);
+
+  let disableFull = false;
+  /**
+   * 满屏加载
+   */
+  function fullLoad() {
+    if (!isFull(ele)) {
+      // 已经超过一屏了
+      disableFull = true;
+      return;
+    }
+    config.callback();
+  }
+
+  function init() {
+    if (isDown) {
+      for (const key of Object.keys(eventList)) {
+        ele.addEventListener(key, eventList[key], willPreventDefault);
+      }
+    }
+
+    if (isUp) {
+      ele.addEventListener('scroll', scroll, notPreventDefault);
+    }
+    if (config.loadFull.enable) fullLoad();
+  }
+  function destory() {
+    if (isDown) {
+      for (const key of Object.keys(eventList)) {
+        ele.removeEventListener(key, eventList[key]);
+      }
+    }
+    if (isUp) {
+      ele.removeEventListener('scroll', scroll);
     }
   }
 
-  if (isUp) {
-    ele.addEventListener('scroll', scroll, notPreventDefault);
+  // 展示loading效果
+  function showLoading() {
+    if (isUp) {
+      childUp.style.visibility = 'visible';
+    }
+    if (isDown) {
+      setTimeout(() => {
+        // 获取 indicator高度
+        setHeight(childDown, indicatorEle.clientHeight);
+      }, 0);
+    }
   }
 
   return {
-    destory() {
-      if (isDown) {
-        for (const key of Object.keys(eventList)) {
-          ele.removeEventListener(key, eventList[key]);
-        }
-      }
-      if (isUp) {
-        ele.removeEventListener('scroll', scroll);
-      }
-    },
+    destory,
     endSuccess() {
       // 加载结束回调，隐藏loading状态
       if (isUp) {
@@ -160,9 +216,32 @@ function refresh(ele, cof = {}) {
       if (isDown) {
         currentSt = 'finish';
         config.statusChange('finish');
-        setHeight(childDown, 0);
+        setTimeout(() => {
+          setHeight(childDown, 0);
+        });
+      }
+      if (!disableFull && config.loadFull.enable) {
+        setTimeout(() => {
+          fullLoad();
+        }, config.loadFull.delay);
       }
     },
+    init,
+    lockScroll(flag) {
+      isLock = flag;
+    },
+    resetScroll() {
+      // 重置内部状态，通常用于tab切换
+
+      // 重新判断是否满屏
+      disableFull = false;
+      if (config.loadFull.enable) {
+        setTimeout(() => {
+          fullLoad();
+        }, config.loadFull.delay);
+      }
+    },
+    showLoading,
   };
 }
 

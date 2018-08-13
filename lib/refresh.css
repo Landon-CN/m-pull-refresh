@@ -1,0 +1,25 @@
+.godz-pr-down {
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  height: 0;
+  text-align: center;
+}
+.godz-pr-indicator {
+  width: 100%;
+}
+
+.godz-pr-up {
+  visibility: hidden;
+  overflow: hidden;
+  text-align: center;
+  margin: 10px 0;
+}
+
+.godz-hardware {
+  /* 硬件加速 */
+  -webkit-transform: translateZ(0);
+  -webkit-transform-style: preserve-3d;
+  -webkit-backface-visibility: hidden;
+  -webkit-perspective: 1000;
+}
