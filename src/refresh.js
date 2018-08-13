@@ -108,8 +108,10 @@ function refresh(ele, cof = {}) {
       startY = null;
       currentSt = 'release';
       config.statusChange('release');
-
-      config.callback();
+      if (config.autoLoading) {
+        showLoading();
+      }
+      config.callback(loadingCb);
     } else if (currentSt === 'deactivate') {
       startY = null;
       setTransition(childDown, false);
@@ -174,7 +176,7 @@ function refresh(ele, cof = {}) {
       disableFull = true;
       return;
     }
-    config.callback();
+    config.callback(loadingCb);
   }
 
   function init() {
