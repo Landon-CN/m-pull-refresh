@@ -30,6 +30,7 @@ function refresh(ele, cof = {}) {
       statusChange: () => {},
       callback: () => {},
       direction: 'up',
+      autoLoading: false,
     },
     cof,
   );
@@ -144,8 +145,17 @@ function refresh(ele, cof = {}) {
       return;
     }
     upLoading = true;
+    if (config.autoLoading) {
+      showLoading();
+    }
 
-    config.callback();
+    config.callback(loadingCb);
+  }
+
+  function loadingCb() {
+    if (config.autoLoading) {
+      endSuccess();
+    }
   }
 
   const eventList = {

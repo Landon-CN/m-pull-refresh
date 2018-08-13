@@ -30,16 +30,17 @@ class RefreshReact extends Component {
       enable: false,
     },
     direction: 'up',
+    autoLoading: false,
   };
   refresh;
   container = React.createRef();
 
   onRefresh = () => {
-    this.props.onRefresh();
+    return this.props.onRefresh();
   };
 
   refreshInit = () => {
-    const { direction, loadFull } = this.props;
+    const { direction, loadFull, autoLoading } = this.props;
     this.refresh = refresh(this.container.current, {
       direction,
       callback: this.onRefresh,
@@ -49,6 +50,7 @@ class RefreshReact extends Component {
           status,
         });
       },
+      autoLoading,
     });
     this.refresh.init();
   };
@@ -89,7 +91,7 @@ class RefreshReact extends Component {
   render() {
     const { className, indicator, direction } = this.props;
     const cls = Classnames(className, 'godz-hardware');
-  
+
     const isUp = direction === 'both' || direction === 'up';
     const isDown = direction === 'both' || direction === 'down';
 
