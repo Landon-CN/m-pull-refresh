@@ -1,6 +1,6 @@
 {
   "name": "m-pull-refresh",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "m-pull-refresh",
   "main": "index.js",
   "scripts": {

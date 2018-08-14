@@ -147,6 +147,7 @@ function refresh(ele, cof = {}) {
       return;
     }
     upLoading = true;
+    
     if (config.autoLoading) {
       showLoading();
     }
@@ -215,29 +216,31 @@ function refresh(ele, cof = {}) {
     }
   }
 
+  function endSuccess() {
+    // 加载结束回调，隐藏loading状态
+    if (isUp) {
+      childUp.style.visibility = 'hidden';
+      upLoading = false;
+      startTop = null;
+    }
+
+    if (isDown) {
+      currentSt = 'finish';
+      config.statusChange('finish');
+      setTimeout(() => {
+        setHeight(childDown, 0);
+      });
+    }
+    if (!disableFull && config.loadFull.enable) {
+      setTimeout(() => {
+        fullLoad();
+      }, config.loadFull.delay);
+    }
+  }
+
   return {
     destory,
-    endSuccess() {
-      // 加载结束回调，隐藏loading状态
-      if (isUp) {
-        childUp.style.visibility = 'hidden';
-        upLoading = false;
-        startTop = null;
-      }
-
-      if (isDown) {
-        currentSt = 'finish';
-        config.statusChange('finish');
-        setTimeout(() => {
-          setHeight(childDown, 0);
-        });
-      }
-      if (!disableFull && config.loadFull.enable) {
-        setTimeout(() => {
-          fullLoad();
-        }, config.loadFull.delay);
-      }
-    },
+    endSuccess,
     init,
     lockScroll(flag) {
       isLock = flag;

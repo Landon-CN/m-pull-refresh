@@ -35,8 +35,8 @@ class RefreshReact extends Component {
   refresh;
   container = React.createRef();
 
-  onRefresh = () => {
-    return this.props.onRefresh();
+  onRefresh = (cb) => {
+    return this.props.onRefresh(cb);
   };
 
   refreshInit = () => {
