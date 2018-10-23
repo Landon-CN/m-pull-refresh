@@ -156,7 +156,7 @@ function refresh(ele, cof = {}) {
   }
 
   function loadingCb() {
-    if (config.autoLoading) {
+    if (config.autoLoading && !isLock) {
       endSuccess();
     }
   }
