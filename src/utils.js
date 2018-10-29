@@ -52,9 +52,9 @@ export const willPreventDefault = supportsPassive ? { passive: false } : false;
 export const notPreventDefault = supportsPassive ? { passive: true } : false;
 
 /**
- * 判断是否需要满屏加载
+ * 内容充满一屏
  * @param {*} ele
  */
 export function isFull(ele) {
-  return ele.clientHeight === ele.scrollHeight;
+  return ele.clientHeight <= ele.scrollHeight;
 }
